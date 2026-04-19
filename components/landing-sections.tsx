@@ -20,16 +20,16 @@ function SceneImage({ lang }: { lang: "es" | "en" }) {
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="lg:sticky lg:top-24"
+      className="h-full min-h-[340px]"
     >
-      <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-line shadow-xl">
+      <div className="relative h-full min-h-[340px] overflow-hidden rounded-3xl border border-line shadow-xl">
         <Image
-          src="/rosa-scene.png"
+          src="/rosa-scene1.png"
           alt=""
           fill
           priority
-          sizes="(max-width: 1024px) 100vw, 560px"
-          className="object-cover"
+          sizes="(max-width: 1024px) 100vw, 660px"
+          className="object-cover object-[65%_center]"
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/70 via-ink/20 to-transparent p-6 pt-28">
           <p
@@ -96,7 +96,7 @@ function Features({ lang }: { lang: "es" | "en" }) {
   return (
     <section className="bg-paper">
       <div className="mx-auto max-w-6xl px-6 py-20">
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-14">
+        <div className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:items-stretch lg:gap-14">
           <SceneImage lang={lang} />
           <div>
             <motion.h2
