@@ -19,7 +19,7 @@ export function TopBar({ onOpenHistory }: TopBarProps) {
           className="notranslate text-[28px] leading-none text-ink"
           style={{ fontFamily: "var(--font-heading)", fontWeight: 600 }}
         >
-          Rosa
+          Rosa.ai
         </span>
 
         <div className="flex items-center gap-3 sm:gap-4">
