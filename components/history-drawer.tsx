@@ -199,9 +199,11 @@ function ExpandedSession({ session }: { session: Session }) {
                   className="mb-2 h-32 w-full max-w-[240px] rounded-lg border border-line object-cover"
                 />
               )}
-              <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
-                {turn.text}
-              </p>
+              {turn.text && (
+                <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
+                  {turn.text}
+                </p>
+              )}
             </li>
           );
         }

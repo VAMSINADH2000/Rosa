@@ -96,9 +96,11 @@ export function Transcript() {
                   className="mt-1 mb-2 h-40 w-full max-w-[320px] rounded-xl border border-line object-cover"
                 />
               )}
-              <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink">
-                {item.text || (item.done ? "" : "…")}
-              </p>
+              {(item.text || !item.done) && (
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink">
+                  {item.text || "…"}
+                </p>
+              )}
             </li>
           ) : (
             <CitationCard

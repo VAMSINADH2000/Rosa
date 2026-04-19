@@ -246,11 +246,9 @@ export function VoicePanel({
       }
     }
 
-    // 1. User's photo turn (just the filename — thumbnail tells the story).
+    // 1. User's photo turn — thumbnail tells the story, no filename text.
     const userTurnId = `photo-user-${stamp}`;
-    useTranscriptStore
-      .getState()
-      .appendDelta(userTurnId, "user", file.name);
+    useTranscriptStore.getState().appendDelta(userTurnId, "user", "");
     useTranscriptStore.getState().complete(userTurnId);
     // Generate thumbnail off the main path; not blocking the diagnosis call.
     fileToThumbDataUrl(file)
@@ -404,14 +402,17 @@ function buildLastSessionSummary(): string | null {
   // into a Spanish greeting and vice versa.
   const sameLang = sessions.filter((s) => s.lang === currentLang);
   for (const session of sameLang) {
-    // Look through the session for a substantive user turn — not just
-    // "Hello." or "hey". Falls back through the whole session before moving
-    // on to older sessions.
-    const meaningful = session.turns.find(
-      (t) => t.role === "user" && !isTrivialTurn(t.text),
-    );
+    // Collect up to 3 substantive user turns from this session so Rosa has
+    // enough context to paraphrase a real topic — not a truncated half-phrase.
+    const meaningful = session.turns
+      .filter((t) => t.role === "user" && !isTrivialTurn(t.text))
+      .slice(0, 3)
+      .map((t) => t.text.trim())
+      .join(" | ");
     if (meaningful) {
-      return meaningful.text.trim().slice(0, 140);
+      // Cap total length so the prompt stays tidy but there's more than one
+      // sentence to summarize from.
+      return meaningful.slice(0, 400);
     }
   }
   return null;
