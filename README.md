@@ -1,36 +1,170 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Rosa.ai
 
-## Getting Started
+**Bilingual voice + photo AI agronomist for US Hispanic smallholder farmers.**
 
-First, run the development server:
+Built for Desert Dev Lab 2026. A farmer speaks Mexican Spanish, uploads a photo
+of a diseased plant, and Rosa responds in Spanish with a diagnosis and a
+cited NMSU Extension guide — in under 90 seconds, in a browser, no app install.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Why
+
+- **84,000** US Hispanic-operated farms produce **$33B** in annual sales
+- Cooperative Extension publications are **English-first and text-heavy**
+- No deployed AI advisor handles **Mexican Spanish voice + photo diagnosis + real Extension citations**
+
+Rosa is the first.
+
+---
+
+## What's inside
+
+- **Real-time voice** — OpenAI Realtime API over WebRTC, browser mic, ephemeral tokens
+- **Photo diagnosis** — GPT-4o vision (or Claude Opus) grounded in the NMSU corpus
+- **100+ NMSU publications** — indexed in an OpenAI vector store (chile, vegetables, fruit, pecan, soil, irrigation, pests, marketing)
+- **Weather-aware** — live `api.weather.gov` forecast feeds into irrigation advice
+- **Web fallback** — OpenAI Responses API `web_search_preview` when NMSU doesn't cover the topic
+- **Bilingual** — Spanish / English, language-isolated session memory (Spanish sessions never surface English context and vice versa)
+- **Full voice UX** — StateOrb with 6 phase visuals, live mic amplitude meter, mute, chat-on-tap, photo-interrupt
+- **History drawer** — past sessions grouped by date, expandable, per-language
+
+---
+
+## Architecture
+
+```
+Browser (Next.js 15, React 19)
+├── WebRTC ─────────▶ OpenAI Realtime (gpt-realtime voice)
+│                      via ephemeral token from /api/realtime/session
+│                      (injects rosa-prompt + tools + cached NOAA forecast)
+│
+├── /api/diagnose-photo ─────▶ OpenAI gpt-4o vision (or Anthropic Opus)
+├── tool: search_nmsu ────────▶ /api/search-nmsu ─▶ OpenAI vector_stores.search
+├── tool: cite_nmsu_doc ──────▶ client-side citation store (UI card)
+├── tool: web_search_fallback ▶ /api/web-search ──▶ OpenAI Responses API
+├── /api/admin/reindex ──────▶ rebuilds vector store from seeds/
+│
+└── localStorage: rosa-history (last 50 sessions, per-language context)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 15/16 (Turbopack) · React 19 · App Router |
+| Language | TypeScript, strict |
+| Styling | Tailwind v4 · shadcn primitives |
+| State | Zustand (+ persist for history) |
+| Motion | Framer Motion |
+| Voice | OpenAI Realtime API · WebRTC · model `gpt-realtime` · voice `marin` |
+| Vision | OpenAI `gpt-4o` (primary) · Anthropic `claude-opus-4-7` (fallback) |
+| RAG | OpenAI Vector Stores |
+| Weather | api.weather.gov (free, no key) |
+| Deploy | Vercel |
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Local development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+git clone https://github.com/VAMSINADH2000/Rosa.git
+cd Rosa
+npm install
+cp .env.example .env.local   # then fill in API keys
+npm run dev                  # http://localhost:3000
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+First time only: build the vector-store index with 100+ NMSU docs.
 
-## Deploy on Vercel
+```bash
+curl -X POST http://localhost:3000/api/admin/reindex \
+  -H "Content-Type: application/json" \
+  -d '{"confirm":"YES"}'
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Copy the `store_id` from the response into `OPENAI_VECTOR_STORE_ID` in
+`.env.local` to skip the lookup-by-name step on future restarts.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Environment variables
+
+See [`.env.example`](./.env.example) for the full list. Minimum required:
+
+| Variable | Required | Notes |
+|---|---|---|
+| `OPENAI_API_KEY` | **yes** | Voice, vision, vector store, web search |
+| `OPENAI_REALTIME_MODEL` | **yes** | Set to `gpt-realtime` |
+| `OPENAI_VECTOR_STORE_ID` | recommended | Pin after first reindex so cold-starts are fast |
+| `ANTHROPIC_API_KEY` | only if `DIAGNOSE_PROVIDER=anthropic` | Alternate photo path |
+| `DIAGNOSE_PROVIDER` | no (defaults `openai`) | `openai` or `anthropic` |
+
+---
+
+## Project layout
+
+```
+app/
+├── layout.tsx, page.tsx, icon.tsx, globals.css
+└── api/
+    ├── realtime/session/     — mint OpenAI Realtime ephemeral key
+    ├── diagnose-photo/       — vision diagnosis
+    ├── search-nmsu/          — RAG search
+    ├── web-search/           — web fallback
+    └── admin/reindex/        — rebuild vector store
+
+components/
+├── hero.tsx, landing-sections.tsx, top-bar.tsx
+├── voice-panel.tsx           — WebRTC lifecycle + tool dispatch + phase tracking
+├── conversation-view.tsx     — full-screen conversation surface
+├── state-orb.tsx             — Rosa portrait + phase-specific ring animations
+├── mic-amplitude.tsx         — Web Audio AnalyserNode 9-bar meter
+├── status-strip.tsx          — phase label at the top
+├── transcript.tsx            — turns + inline citation cards
+├── citation-panel.tsx        — right-rail citations (desktop)
+└── history-drawer.tsx        — past sessions
+
+lib/
+├── rosa-prompt.ts            — instruction builder
+├── realtime-tools.ts         — tool specs (search_nmsu, cite_nmsu_doc, web_search_fallback)
+├── nmsu-kb.ts                — vector store create / upload / search
+├── weather.ts                — api.weather.gov client
+├── i18n.ts                   — EN/ES string table
+└── *-store.ts                — Zustand stores (transcript, citation, history, phase, lang, user-profile)
+
+seeds/
+├── nmsu-docs.ts              — doc metadata (auto-generated)
+└── nmsu-content.json         — doc body text
+
+scripts/
+├── generate-seeds.mjs        — merge scraped batches → seeds
+└── generate-slides.py        — render the pitch deck .pptx
+```
+
+---
+
+## Deployment
+
+1. Push to GitHub.
+2. **vercel.com → Import Git Repository** → pick the repo → framework auto-detects Next.js
+3. **Settings → Environment Variables** → paste each from `.env.example`
+4. Deploy. Rosa runs on the assigned `*.vercel.app` URL.
+
+Cold-start note: if `OPENAI_VECTOR_STORE_ID` isn't set, the first
+`search_nmsu` call will try to upload 100+ docs and may exceed hobby-tier
+timeouts. Set the env var after running `/api/admin/reindex` once.
+
+---
+
+## Acknowledgments
+
+- **NMSU Extension** for publicly-available research at
+  [pubs.nmsu.edu](https://pubs.nmsu.edu)
+- **NOAA** for `api.weather.gov`
+- **OpenAI** for Realtime, Responses, and vector store APIs
+- Desert Dev Lab 2026 for the runway
+
+Rosa is not a replacement for your local county Extension agent.
